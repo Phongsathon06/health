@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>โซนพยาบาล - ระบบบันทึกข้อมูลสุขภาพ</title>
+    <!-- เพิ่มโลโก้หน้าเว็บตรงนี้ -->
+    <link rel="icon" type="image/png" href="logo.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Sarabun', sans-serif; } </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-900 pb-12">
+
+    <header class="bg-blue-700 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-6 py-5 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-xl sm:text-2xl font-bold flex items-center gap-2">🩺 โซนผู้บริหาร / พยาบาล</h1>
+                <p class="text-sm text-blue-100 mt-0.5">ระบบจัดการข้อมูลสุขภาพชุมชน (พยาบาล)</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <a href="asom.html" class="bg-blue-600 hover:bg-blue-500 text-sm px-4 py-2.5 rounded-xl transition font-semibold shadow-xs flex items-center gap-1.5">
+                    🏠 ไปหน้าบันทึก (อสม.)
+                </a>
+                <button onclick="lockNurseSession()" class="bg-red-600 hover:bg-red-500 text-sm px-4 py-2.5 rounded-xl transition font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer">
+                    🔒 ออกจากระบบ
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <h2 class="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
+                        ⚙️ ตั้งค่ารอบเดือนให้ อสม. บันทึก (พ.ศ.)
+                    </h2>
+                    <p class="text-xs text-slate-500 mb-4">กำหนดเดือนและปีที่ต้องการให้ อสม. ทำการบันทึกข้อมูลในระบบ</p>
+                </div>
+                <div class="flex flex-col sm:flex-row items-center gap-3">
+                    <select id="selectConfigMonth" class="border-2 border-slate-200 rounded-2xl px-4 py-3 text-sm flex-1 bg-slate-50 font-medium outline-none focus:border-blue-600">
+                        <option value="01">มกราคม</option>
+                        <option value="02">กุมภาพันธ์</option>
+                        <option value="03">มีนาคม</option>
+                        <option value="04">เมษายน</option>
+                        <option value="05">พฤษภาคม</option>
+                        <option value="06">มิถุนายน</option>
+                        <option value="07">กรกฎาคม</option>
+                        <option value="08">สิงหาคม</option>
+                        <option value="09" selected>กันยายน</option>
+                        <option value="10">ตุลาคม</option>
+                        <option value="11">พฤศจิกายน</option>
+                        <option value="12">ธันวาคม</option>
+                    </select>
+                    <select id="selectConfigYear" class="border-2 border-slate-200 rounded-2xl px-4 py-3 text-sm w-full sm:w-36 bg-slate-50 font-medium outline-none focus:border-blue-600">
+                        <option value="2026" selected>พ.ศ. 2569</option>
+                        <option value="2027">พ.ศ. 2570</option>
+                        <option value="2028">พ.ศ. 2571</option>
+                    </select>
+                    <button onclick="saveActiveMonthConfig()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-6 py-3 rounded-2xl font-bold transition shadow-sm whitespace-nowrap w-full sm:w-auto cursor-pointer">
+                        บันทึกรอบเดือน
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col justify-between">
+                <div>
+                    <h2 class="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
+                        📊 นำเข้าไฟล์รายชื่อ (Excel) พร้อมระบุรอบเดือน
+                    </h2>
+                    <p class="text-xs text-slate-500 mb-3">เลือกเดือน/ปีที่ต้องการให้ข้อมูลชุดนี้สังกัดอยู่ ก่อนกดนำเข้า</p>
+                </div>
+                <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <select id="importMonth" class="border-2 border-slate-200 rounded-2xl px-3 py-2.5 text-sm bg-slate-50 font-medium outline-none focus:border-blue-600">
+                            <option value="01">มกราคม</option>
+                            <option value="02">กุมภาพันธ์</option>
+                            <option value="03">มีนาคม</option>
+                            <option value="04">เมษายน</option>
+                            <option value="05">พฤษภาคม</option>
+                            <option value="06">มิถุนายน</option>
+                            <option value="07">กรกฎาคม</option>
+                            <option value="08" selected>สิงหาคม</option>
+                            <option value="09">กันยายน</option>
+                            <option value="10">ตุลาคม</option>
+                            <option value="11">พฤศจิกายน</option>
+                            <option value="12">ธันวาคม</option>
+                        </select>
+                        <select id="importYear" class="border-2 border-slate-200 rounded-2xl px-3 py-2.5 text-sm bg-slate-50 font-medium outline-none focus:border-blue-600">
+                            <option value="2026" selected>พ.ศ. 2569</option>
+                            <option value="2027">พ.ศ. 2570</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col sm:flex-row items-center gap-3">
+                        <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" class="border-2 border-slate-200 rounded-2xl p-2 text-sm w-full bg-slate-50 font-medium file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-bold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                        <button type="button" onclick="importExcelData()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm px-6 py-3 rounded-2xl font-bold transition shadow-sm whitespace-nowrap w-full sm:w-auto cursor-pointer">
+                            📥 นำเข้ารายชื่อ
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-6 border-b border-slate-200 space-y-4 bg-slate-50/50">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div class="flex items-center gap-3">
+                        <h2 class="font-bold text-slate-900 text-lg flex items-center gap-2">📋 ข้อมูลการคัดกรองสุขภาพ</h2>
+                        <span id="recordCountText" class="text-xs bg-blue-50 text-blue-700 border border-blue-200 px-3.5 py-1.5 rounded-full font-bold">แสดง 0 รายการ</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="openNurseAddModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2.5 rounded-2xl font-bold transition shadow-sm flex items-center gap-1.5 cursor-pointer">+ เพิ่มคนไข้</button>
+                        <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm px-4 py-2.5 rounded-2xl font-bold transition shadow-sm flex items-center gap-1.5 cursor-pointer">📥 Excel</button>
+                        <button onclick="deleteEntireMonth()" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-sm px-3.5 py-2.5 rounded-2xl font-bold transition cursor-pointer">ลบเดือนนี้</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:flex flex-wrap items-center gap-3 pt-2 border-t border-slate-200/60">
+                    <select id="selectViewMonth" onchange="loadData()" class="border-2 border-slate-200 rounded-2xl px-3.5 py-2.5 text-sm bg-white font-medium outline-none focus:border-blue-600 flex-1 sm:flex-none">
+                        <option value="01">มกราคม</option>
+                        <option value="02">กุมภาพันธ์</option>
+                        <option value="03">มีนาคม</option>
+                        <option value="04">เมษายน</option>
+                        <option value="05">พฤษภาคม</option>
+                        <option value="06">มิถุนายน</option>
+                        <option value="07">กรกฎาคม</option>
+                        <option value="08" selected>สิงหาคม</option>
+                        <option value="09">กันยายน</option>
+                        <option value="10">ตุลาคม</option>
+                        <option value="11">พฤศจิกายน</option>
+                        <option value="12">ธันวาคม</option>
+                    </select>
+
+                    <select id="selectViewYear" onchange="loadData()" class="border-2 border-slate-200 rounded-2xl px-3.5 py-2.5 text-sm bg-white font-medium outline-none focus:border-blue-600 w-full sm:w-36">
+                        <option value="2026" selected>พ.ศ. 2569</option>
+                        <option value="2027">พ.ศ. 2570</option>
+                    </select>
+
+                    <select id="selectFilterVillage" onchange="filterTableByPid()" class="border-2 border-slate-200 rounded-2xl px-3.5 py-2.5 text-sm bg-white font-medium outline-none focus:border-blue-600 w-full sm:w-48">
+                        <option value="">🏠 ทุกหมู่บ้าน</option>
+                    </select>
+
+                    <div class="relative flex-1 min-w-[220px]">
+                        <input type="text" id="searchPidInput" oninput="filterTableByPid()" placeholder="🔍 ค้นหา PID หรือ ชื่อ-นามสกุล..." class="border-2 border-slate-200 rounded-2xl px-4 py-2.5 text-sm outline-none focus:border-blue-600 w-full bg-white font-medium">
+                    </div>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm border-collapse">
+                    <thead>
+                        <tr class="bg-slate-100/80 text-slate-700 border-b border-slate-200 font-bold">
+                            <th class="p-4">ลำดับ</th>
+                            <th class="p-4">PID</th>
+                            <th class="p-4">ชื่อ-นามสกุล</th>
+                            <th class="p-4">อายุ</th>
+                            <th class="p-4">ที่อยู่</th>
+                            <th class="p-4">น/ส (กก/ซม)</th>
+                            <th class="p-4">BP1</th>
+                            <th class="p-4">BP2</th>
+                            <th class="p-4">Pulse</th>
+                            <th class="p-4">FBS</th>
+                            <th class="p-4">วันนัดถัดไป (พ.ศ.)</th>
+                            <th class="p-4">คำสั่งพยาบาล</th>
+                            <th class="p-4">โรคประจำตัว</th>
+                            <th class="p-4 text-center">สถานะนัด</th>
+                            <th class="p-4 text-center">การพบแพทย์</th>
+                            <th class="p-4 text-center">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody" class="divide-y divide-slate-100 font-medium"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal เพิ่มคนไข้ -->
+    <div id="nurseAddModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-3xl shadow-xl max-w-md w-full p-6 space-y-4">
+            <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">➕ เพิ่มรายชื่อคนไข้ใหม่</h3>
+            <div class="space-y-3 text-sm">
+                <div>
+                    <label class="block font-bold mb-1 text-slate-700">เลขประจำตัวประชาชน (PID)</label>
+                    <input type="text" id="nurseAddIdCard" class="w-full border-2 border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-blue-600 font-medium bg-slate-50" placeholder="13 หลัก">
+                </div>
+                <div>
+                    <label class="block font-bold mb-1 text-slate-700">ชื่อ - นามสกุล</label>
+                    <input type="text" id="nurseAddFullname" class="w-full border-2 border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-blue-600 font-medium bg-slate-50" placeholder="นาย สมชาย ใจดี">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-bold mb-1 text-slate-700">อายุ</label>
+                        <input type="number" id="nurseAddAge" class="w-full border-2 border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-blue-600 font-medium bg-slate-50">
+                    </div>
+                    <div>
+                        <label class="block font-bold mb-1 text-slate-700">หมู่ที่</label>
+                        <input type="number" id="nurseAddVillageNo" class="w-full border-2 border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-blue-600 font-medium bg-slate-50" placeholder="เช่น 1">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-bold mb-1 text-slate-700">บ้านเลขที่</label>
+                    <input type="text" id="nurseAddHouseNo" class="w-full border-2 border-slate-200 rounded-xl px-3.5 py-2.5 outline-none focus:border-blue-600 font-medium bg-slate-50" placeholder="123/4">
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                <button onclick="closeNurseAddModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-bold text-sm transition cursor-pointer">ยกเลิก</button>
+                <button onclick="saveNurseNewPatient()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition cursor-pointer">บันทึกข้อมูล</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal แก้ไขข้อมูล -->
+    <div id="editModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl shadow-xl max-w-lg w-full p-6 space-y-4 my-8">
+            <h3 class="text-lg font-bold text-slate-900 flex items-center gap-2">✏️ แก้ไขข้อมูลการคัดกรอง & บันทึกแพทย์</h3>
+            <input type="hidden" id="editRecordId">
+            
+            <div class="grid grid-cols-2 gap-3 text-sm bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                <div>
+                    <label class="block font-bold mb-1 text-slate-500 text-xs">ชื่อ-นามสกุล</label>
+                    <input type="text" id="editFullname" disabled class="w-full bg-transparent font-bold text-slate-800 outline-none">
+                </div>
+                <div>
+                    <label class="block font-bold mb-1 text-slate-500 text-xs">PID</label>
+                    <input type="text" id="editIdCard" disabled class="w-full bg-transparent font-bold text-slate-800 outline-none">
+                </div>
+            </div>
+
+            <div class="space-y-3 bg-slate-50/50 p-4 rounded-2xl border border-slate-200 text-sm">
+                <h4 class="font-bold text-slate-700 text-xs uppercase tracking-wider">ค่าสัญญาณชีพและร่างกาย</h4>
+                <div class="grid grid-cols-4 gap-2">
+                    <div><label class="block font-bold mb-1 text-xs">อายุ</label><input type="number" id="editAge" class="w-full border-2 border-slate-200 bg-white rounded-xl px-3 py-2 text-sm font-medium outline-none focus:border-blue-600"></div>
+                    <div><label class="block font-bold mb-1 text-xs">น้ำหนัก</label><input type="number" step="0.1" id="editWeight" class="w-full border-2 border-slate-200 bg-white rounded-xl px-3 py-2 text-sm font-medium outline-none focus:border-blue-600"></div>
+                    <div><label class="block font-bold mb-1 text-xs">ส่วนสูง</label><input type="number" step="0.1" id="editHeight" class="w-full border-2 border-slate-200 bg-white rounded-xl px-3 py-2 text-sm font-medium outline-none focus:border-blue-600"></div>
+                    <div><label class="block font-bold mb-1 text-xs">ชีพจร</label><input type="number" id="editPulse" class="w-full border-2 border-slate-200 bg-white rounded-xl px-3 py-2 text-sm font-medium outline-none focus:border-blue-600"></div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 pt-1">
+                    <div><label class="block font-bold mb-1 text-xs">BP (ตัวบน)</label><input type="text" id="editBp1" class="w-full border-2 border-slate-200 bg-white rounded-xl px-3 py-2 text-sm font-medium outline-none focus:border-blue-600"></div>
+                    <div><label class="block font-bold mb-1 text-xs">BP (ตัวล่าง)</label><input type="text" id="editBp2" class="w-full border-2 border-slate-200 bg-white rounded-xl px-3 py-2 text-sm font-medium outline-none focus:border-blue-600"></div>
+                    <div><label class="block font-bold mb-1 text-xs">FBS (น้ำตาล)</label><input type="text" id="editFbs" class="w-full border-2 border-slate-200 bg-white rounded-xl px-3 py-2 text-sm font-medium outline-none focus:border-blue-600"></div>
+                </div>
+            </div>
+
+            <div class="text-sm">
+                <label class="block font-bold mb-1 text-blue-700">📅 วันนัดหมายถัดไป</label>
+                <input type="text" id="editNextAppointmentDate" placeholder="เช่น 15 ต.ค. 2569" class="w-full border-2 border-slate-200 rounded-xl px-3.5 py-2.5 font-medium outline-none focus:border-blue-600 bg-slate-50">
+            </div>
+
+            <div class="border-t border-slate-200 pt-3 text-sm">
+                <label class="block font-bold mb-2 text-slate-700">โรคประจำตัว</label>
+                <div class="grid grid-cols-4 gap-2 font-medium text-xs">
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="editDm" value="DM"> DM</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="editHt" value="HT"> HT</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="editCkd" value="CKD"> CKD</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="editAsthma" value="Asthma"> Asthma</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="editCopd" value="COPD"> COPD</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="editStroke" value="Stroke"> Stroke</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="editDld" value="DLD"> DLD</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="editThyroid" value="ไทรอยด์"> ไทรอยด์</label>
+                </div>
+                <div class="mt-2">
+                    <input type="text" id="editOtherDisease" class="w-full border-2 border-slate-200 rounded-xl p-2.5 text-sm font-medium outline-none focus:border-blue-600 bg-slate-50" placeholder="โรคอื่นๆ (ถ้ามี)">
+                </div>
+            </div>
+
+            <div class="border-t border-slate-200 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm font-medium bg-blue-50/50 p-4 rounded-2xl border border-blue-100">
+                <div>
+                    <label class="block font-bold mb-1.5 text-xs text-blue-900">สถานะนัด</label>
+                    <div class="flex items-center gap-4">
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="editAppointStatus" value="มาตามนัด"> มาตามนัด</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="editAppointStatus" value="ผิดนัด"> ผิดนัด</label>
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-bold mb-1.5 text-xs text-blue-900">การพบแพทย์</label>
+                    <div class="flex items-center gap-4">
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="editSeeDoctor" value="พบแพทย์"> พบแพทย์</label>
+                        <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="editSeeDoctor" value="ไม่พบแพทย์"> ไม่พบแพทย์</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-sm">
+                <label class="block font-bold mb-1 text-slate-700">คำสั่งพยาบาล / หมายเหตุแพทย์</label>
+                <textarea id="editDoctorNote" rows="2" class="w-full border-2 border-slate-200 rounded-xl px-3.5 py-2.5 font-medium outline-none focus:border-blue-600 bg-slate-50"></textarea>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                <button onclick="closeEditModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-bold text-sm transition cursor-pointer">ยกเลิก</button>
+                <button onclick="saveEditedRecord()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition cursor-pointer">💾 บันทึก</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
